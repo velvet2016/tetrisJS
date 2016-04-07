@@ -1,0 +1,14 @@
+.myCell{
+    width:  20px;
+    height: 20px;
+}
+tr, td {
+    border: 1px solid black;
+}
+table {
+    border: 4px solid black;
+}
+.center {
+    margin-left:auto;
+    margin-right:auto;
+}

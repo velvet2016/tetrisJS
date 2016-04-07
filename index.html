@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Tetris</title>
+</head>
+<body onload="onload()">
+<div id="container"></div>
+
+</body>
+<script>
+    var tableSizeY = 22;
+    var tableSizeX = 10;
+    var isGameOver = false;
+    var curFigure = new Cube();
+    var grid;
+    var DOWN =  {dx:  0,  dy: 1};
+    var RIGHT = {dx:  1,  dy: 0};
+    var LEFT =  {dx: -1,  dy: 0};
+    function onload() {
+        initArray();
+        tableCreate();
+        interval =setInterval(moveDownCurFigure, 1000);
+    }
+    function moveDownCurFigure() {
+        console.info("moveDownCurFigure()");
+        curFigure.moveDown();
+
+    }
+
+    function tableCreate() {
+        var div = document.getElementById('container'), tbl = document.createElement('table');
+        tbl.className = 'center';
+        tbl.id = 'gameCanvas';
+        for (var i = 0; i < tableSizeY; i++) {
+            var tr = tbl.insertRow();
+            for (var j = 0; j < tableSizeX; j++) {
+                var td = tr.insertCell();
+                td.className = 'myCell';
+                td.id = (
+                        ('0' + j.toString()).slice(-2)
+                        +
+                        ('0' + i.toString()).slice(-2)
+                );
+            }
+        }
+        div.appendChild(tbl);
+    }
+    function initArray() {
+        console.info("init array");
+        var extArr = [];
+        for (var i = 0; i < tableSizeY; i++){
+            var internalArr = [];
+            for (var j = 0; j < tableSizeX; j++){
+                internalArr.push(false);
+            }
+            extArr.push(internalArr);
+        }
+        grid = extArr;
+    }
+
+    function Figure() {
+        this.x = 4;
+        this.y = 0;
+        this.rotPos = 0;
+        this.numberOfRotPos = 0;
+        this.fourRelPos = [];
+        this.getRelCells = function () {
+            return this.fourRelPos[this.rotPos];
+        };
+        this.getAbsCells = function () {
+            var relCells = this.getRelCells();
+            var res =  [];
+            res.push([relCells[0][0] + this.x,  relCells[0][1] + this.y]);
+            res.push([relCells[1][0] + this.x,  relCells[1][1] + this.y]);
+            res.push([relCells[2][0] + this.x,  relCells[2][1] + this.y]);
+            res.push([relCells[3][0] + this.x,  relCells[3][1] + this.y]);
+            return res;
+        };
+        this.predictAbsCells = function (dir) {
+            var absCells = this.getAbsCells();
+            var res =  [];
+            res.push([absCells[0][0] + dir.dx,  absCells[0][1] + dir.dy]);
+            res.push([absCells[1][0] + dir.dx,  absCells[1][1] + dir.dy]);
+            res.push([absCells[2][0] + dir.dx,  absCells[2][1] + dir.dy]);
+            res.push([absCells[3][0] + dir.dx,  absCells[3][1] + dir.dy]);
+            return res;
+        };
+        this.isPlaceFree = function (absCells) {
+          return  absCells.every(function (item) {
+                return (grid[item[1]][item[0]] == false);
+            })
+        };
+        this.isMoveAvailable = function (dir) {
+            var predictedCells = this.predictAbsCells(dir)
+            try {
+                if (!this.isPlaceFree(predictedCells)) return false;
+            } catch (IndexOutOfBoundsException) {
+                console.info("index");
+                return false;
+            }
+            return true;
+        };
+        this.move = function(dir) {
+            console.info(this.x);
+            console.info(this.y);
+            function getCell(item) {
+                var id = concat(item[0], item[1]);
+                return document.getElementById(id);
+            }
+            function whiteItem(item, index) {
+                var cell = getCell(item);
+                cell.style.backgroundColor = "white";
+            }
+            function blackItem(item, index) {
+                var cell = getCell(item);
+                cell.style.backgroundColor = "black";
+            }
+            function erase(absCells) {
+                absCells.forEach(whiteItem)
+            }
+            function color(absCells) {
+                absCells.forEach(blackItem)
+            }
+            if (this.isMoveAvailable(dir)) {
+                erase(this.getAbsCells());
+                this.x = this.x + dir.dx;
+                this.y = this.y + dir.dy;
+                color(this.getAbsCells());
+                return true;
+            }
+            return false;
+        };
+        this.moveDown = function () {
+            var dir = DOWN;
+            if (this.isMoveAvailable(dir)) {
+                this.move(dir);
+                return true;
+            }else{
+                return false;
+            }
+        }
+    }
+
+    function Cube() {
+        Figure.apply(this, arguments);
+        this.fourRelPos.push([[0,0], [0,1],[1,0], [1,1]]);
+        this.numberOfDirection = 1;
+    }
+    function generateNewFigure() {
+        return new Cube();
+    }
+    function NoPlaceException() {}
+    function game() {
+        while(!isGameOver){
+            curFigure.moveDown();
+        }
+    }
+    function concat(a, b) {
+        return ('0' + a.toString()).slice(-2) + ('0' + b.toString()).slice(-2);
+    }
+
+
+</script>
+</html>
