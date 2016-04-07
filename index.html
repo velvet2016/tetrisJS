@@ -5,28 +5,24 @@
     <link rel="stylesheet" type="text/css" href="style.css">
     <title>Tetris</title>
 </head>
-<body onload="onload()">
+<body onload="onLoad()">
 <div id="container"></div>
 
 </body>
 <script>
+    var game;
     var tableSizeY = 22;
     var tableSizeX = 10;
-    var isGameOver = false;
-    var curFigure = new Cube();
-    var grid;
     var DOWN =  {dx:  0,  dy: 1};
     var RIGHT = {dx:  1,  dy: 0};
     var LEFT =  {dx: -1,  dy: 0};
-    function onload() {
-        initArray();
+    function onLoad() {
         tableCreate();
-        interval =setInterval(moveDownCurFigure, 1000);
+        game = new Game();
+        interval = setInterval(play, 100);
     }
-    function moveDownCurFigure() {
-        console.info("moveDownCurFigure()");
-        curFigure.moveDown();
-
+    function play() {
+        game.step();
     }
 
     function tableCreate() {
@@ -46,18 +42,6 @@
             }
         }
         div.appendChild(tbl);
-    }
-    function initArray() {
-        console.info("init array");
-        var extArr = [];
-        for (var i = 0; i < tableSizeY; i++){
-            var internalArr = [];
-            for (var j = 0; j < tableSizeX; j++){
-                internalArr.push(false);
-            }
-            extArr.push(internalArr);
-        }
-        grid = extArr;
     }
 
     function Figure() {
@@ -87,22 +71,22 @@
             res.push([absCells[3][0] + dir.dx,  absCells[3][1] + dir.dy]);
             return res;
         };
-        this.isPlaceFree = function (absCells) {
+        this.isPlaceFree = function (absCells, grid) {
           return  absCells.every(function (item) {
                 return (grid[item[1]][item[0]] == false);
             })
         };
-        this.isMoveAvailable = function (dir) {
+        this.isMoveAvailable = function (dir, grid) {
             var predictedCells = this.predictAbsCells(dir);
             try {
-                if (!this.isPlaceFree(predictedCells)) return false;
+                if (!this.isPlaceFree(predictedCells, grid)) return false;
             } catch (IndexOutOfBoundsException) {
                 console.info("index");
                 return false;
             }
             return true;
         };
-        this.move = function(dir) {
+        this.move = function(dir, grid) {
             console.info(this.x);
             console.info(this.y);
             function getCell(item) {
@@ -115,7 +99,7 @@
             }
             function blackItem(item, index) {
                 var cell = getCell(item);
-                cell.style.backgroundColor = "black";
+                cell.style.backgroundColor = "#2F2F2F";
             }
             function erase(absCells) {
                 absCells.forEach(whiteItem)
@@ -123,7 +107,7 @@
             function color(absCells) {
                 absCells.forEach(blackItem)
             }
-            if (this.isMoveAvailable(dir)) {
+            if (this.isMoveAvailable(dir, grid)) {
                 erase(this.getAbsCells());
                 this.x = this.x + dir.dx;
                 this.y = this.y + dir.dy;
@@ -132,10 +116,9 @@
             }
             return false;
         };
-        this.moveDown = function () {
-            var dir = DOWN;
-            if (this.isMoveAvailable(dir)) {
-                this.move(dir);
+        this.moveDown = function (grid) {
+            if (this.isMoveAvailable(DOWN, grid)) {
+                this.move(DOWN, grid);
                 return true;
             }else{
                 return false;
@@ -148,19 +131,36 @@
         this.fourRelPos.push([[0,0], [0,1],[1,0], [1,1]]);
         this.numberOfDirection = 1;
     }
-    function generateNewFigure() {
-        return new Cube();
-    }
-    function NoPlaceException() {}
-    function game() {
-        while(!isGameOver){
-            curFigure.moveDown();
-        }
-    }
+
     function concat(a, b) {
         return ('0' + a.toString()).slice(-2) + ('0' + b.toString()).slice(-2);
     }
+    function Game() {
+        this.grid = initGrid();
+        this.currentFigure = getNewFigure(this.grid);
+        this.step = function(){
+            console.info("step");
+            if (!this.currentFigure.moveDown(this.grid)){
+                this.currentFigure = getNewFigure(this.grid);
+            }
+        };
+        function initGrid() {
+            console.info("init array");
+            var extArr = [];
+            for (var i = 0; i < tableSizeY; i++){
+                var internalArr = [];
+                for (var j = 0; j < tableSizeX; j++){
+                    internalArr.push(false);
+                }
+                extArr.push(internalArr);
+            }
+            return extArr;
+        }
+        function getNewFigure(grid) {
+            return new Cube();
+        }
 
+    }
 
 </script>
 </html>
