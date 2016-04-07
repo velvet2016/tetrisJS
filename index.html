@@ -93,7 +93,7 @@
             })
         };
         this.isMoveAvailable = function (dir) {
-            var predictedCells = this.predictAbsCells(dir)
+            var predictedCells = this.predictAbsCells(dir);
             try {
                 if (!this.isPlaceFree(predictedCells)) return false;
             } catch (IndexOutOfBoundsException) {
