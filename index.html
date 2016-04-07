@@ -5,21 +5,22 @@
     <link rel="stylesheet" type="text/css" href="style.css">
     <title>Tetris</title>
 </head>
-<body onload="onLoad()">
+<body onload="onLoad()" onkeydown="whichButton(event)">
 <div id="container"></div>
 
 </body>
 <script>
     var game;
-    var tableSizeY = 22;
+    var tableSizeY = 24;
     var tableSizeX = 10;
-    var DOWN =  {dx:  0,  dy: 1};
-    var RIGHT = {dx:  1,  dy: 0};
-    var LEFT =  {dx: -1,  dy: 0};
+    var DOWN = {dx: 0, dy: 1};
+    var RIGHT = {dx: 1, dy: 0};
+    var LEFT = {dx: -1, dy: 0};
+
     function onLoad() {
         tableCreate();
         game = new Game();
-        interval = setInterval(play, 100);
+        interval = setInterval(play, game.delay);
     }
     function play() {
         game.step();
@@ -43,123 +44,316 @@
         }
         div.appendChild(tbl);
     }
+    function whichButton(event) {
+        var keyLeft = 37;
+        var keyUp = 38;
+        var keyRight = 39;
+        var keyDown = 40;
+        var keySpace = 32;
+
+        var inCode;
+        inCode = event.keyCode;
+        //console.log(inCode);
+        if (inCode == keyUp) {
+            game.currentFigure.turn(game.grid);
+        }
+        if (inCode == keyRight) {
+            game.currentFigure.moveRight(game.grid);
+        }
+        if (inCode == keyLeft) {
+            game.currentFigure.moveLeft(game.grid);
+        }
+        if (inCode == keyDown) {
+            while(game.currentFigure.moveDown(game.grid)){
+            }
+            game.clearInterval();
+            game.setInterval();
+        }
+        if (inCode == keySpace) {
+            game.pause();
+        }
+    }
+
 
     function Figure() {
         this.x = 4;
         this.y = 0;
-        this.rotPos = 0;
-        this.numberOfRotPos = 0;
+        this.numberOfRotPos = undefined;
         this.fourRelPos = [];
+        this.rotPos = undefined;
         this.getRelCells = function () {
             return this.fourRelPos[this.rotPos];
         };
         this.getAbsCells = function () {
             var relCells = this.getRelCells();
-            var res =  [];
-            res.push([relCells[0][0] + this.x,  relCells[0][1] + this.y]);
-            res.push([relCells[1][0] + this.x,  relCells[1][1] + this.y]);
-            res.push([relCells[2][0] + this.x,  relCells[2][1] + this.y]);
-            res.push([relCells[3][0] + this.x,  relCells[3][1] + this.y]);
+            var res = [];
+            res.push([relCells[0][0] + this.x, relCells[0][1] + this.y]);
+            res.push([relCells[1][0] + this.x, relCells[1][1] + this.y]);
+            res.push([relCells[2][0] + this.x, relCells[2][1] + this.y]);
+            res.push([relCells[3][0] + this.x, relCells[3][1] + this.y]);
             return res;
         };
-        this.predictAbsCells = function (dir) {
+        this.predictMovedAbsCells = function (dir) {
             var absCells = this.getAbsCells();
-            var res =  [];
-            res.push([absCells[0][0] + dir.dx,  absCells[0][1] + dir.dy]);
-            res.push([absCells[1][0] + dir.dx,  absCells[1][1] + dir.dy]);
-            res.push([absCells[2][0] + dir.dx,  absCells[2][1] + dir.dy]);
-            res.push([absCells[3][0] + dir.dx,  absCells[3][1] + dir.dy]);
+            var res = [];
+            res.push([absCells[0][0] + dir.dx, absCells[0][1] + dir.dy]);
+            res.push([absCells[1][0] + dir.dx, absCells[1][1] + dir.dy]);
+            res.push([absCells[2][0] + dir.dx, absCells[2][1] + dir.dy]);
+            res.push([absCells[3][0] + dir.dx, absCells[3][1] + dir.dy]);
+            return res;
+        };
+        this.predictTurnedAbsCells = function () {
+            var turnedRelCells = this.fourRelPos[(this.rotPos+1)%this.numberOfRotPos];
+            var res = [];
+            res.push([turnedRelCells[0][0] + this.x, turnedRelCells[0][1] + this.y]);
+            res.push([turnedRelCells[1][0] + this.x, turnedRelCells[1][1] + this.y]);
+            res.push([turnedRelCells[2][0] + this.x, turnedRelCells[2][1] + this.y]);
+            res.push([turnedRelCells[3][0] + this.x, turnedRelCells[3][1] + this.y]);
             return res;
         };
         this.isPlaceFree = function (absCells, grid) {
-          return  absCells.every(function (item) {
+            return absCells.every(function (item) {
                 return (grid[item[1]][item[0]] == false);
             })
         };
         this.isMoveAvailable = function (dir, grid) {
-            var predictedCells = this.predictAbsCells(dir);
+            var predictedCells = this.predictMovedAbsCells(dir);
             try {
                 if (!this.isPlaceFree(predictedCells, grid)) return false;
-            } catch (IndexOutOfBoundsException) {
-                console.info("index");
+            } catch (e) {
+                //console.info("index");
                 return false;
             }
             return true;
         };
-        this.move = function(dir, grid) {
-            console.info(this.x);
-            console.info(this.y);
-            function getCell(item) {
-                var id = concat(item[0], item[1]);
-                return document.getElementById(id);
-            }
-            function whiteItem(item, index) {
-                var cell = getCell(item);
-                cell.style.backgroundColor = "white";
-            }
-            function blackItem(item, index) {
-                var cell = getCell(item);
-                cell.style.backgroundColor = "#2F2F2F";
-            }
-            function erase(absCells) {
-                absCells.forEach(whiteItem)
-            }
-            function color(absCells) {
-                absCells.forEach(blackItem)
-            }
+        this.erase = function () {
+            var absCells = this.getAbsCells();
+            absCells.forEach(whiteItem);
+        };
+        this.draw = function () {
+            var absCells = this.getAbsCells();
+            absCells.forEach(blackItem);
+        };
+        this.move = function (dir, grid) {
+            //console.info(this.x);
+            //console.info(this.y);
             if (this.isMoveAvailable(dir, grid)) {
-                erase(this.getAbsCells());
+                this.erase();
                 this.x = this.x + dir.dx;
                 this.y = this.y + dir.dy;
-                color(this.getAbsCells());
+                this.draw();
                 return true;
             }
             return false;
         };
+        this.fillGrid = function (grid) {
+            //console.info("filling grid");
+            var absCells = this.getAbsCells();
+            absCells.forEach(function (item) {
+                grid[item[1]][item[0]] = true;
+            })
+        };
         this.moveDown = function (grid) {
-            if (this.isMoveAvailable(DOWN, grid)) {
-                this.move(DOWN, grid);
-                return true;
-            }else{
-                return false;
+            var wasMoved = this.move(DOWN, grid);
+            if (!wasMoved){
+                this.fillGrid(grid);
             }
+            return wasMoved;
+        };
+        this.moveRight = function (grid) {
+            this.move(RIGHT, grid);
+        };
+        this.moveLeft = function (grid) {
+            this.move(LEFT, grid);
+        };
+        this.turn = function (grid) {
+            var absCells = this.predictTurnedAbsCells();
+            var isPlaceFree = this.isPlaceFree(absCells, grid);
+            if (isPlaceFree) {
+                this.erase();
+                this.rotPos = (this.rotPos + 1) % this.numberOfRotPos;
+                this.draw();
+            }
+        };
+/*        function whiteItem(item, index) {
+            var cell = getCell(item);
+            cell.style.backgroundColor = "white";
         }
+
+        function blackItem(item, index) {
+            var cell = getCell(item);
+            cell.style.backgroundColor = "#2F2F2F";
+        }*/
+
+
+    }
+    function getCell(item) {
+        var id = concat(item[0], item[1]);
+        return document.getElementById(id);
+    }
+    function whiteItem(item, index) {
+        var cell = getCell(item);
+        cell.style.backgroundColor = "white";
+    }
+
+    function blackItem(item, index) {
+        var cell = getCell(item);
+        cell.style.backgroundColor = "#2F2F2F";
     }
 
     function Cube() {
         Figure.apply(this, arguments);
-        this.fourRelPos.push([[0,0], [0,1],[1,0], [1,1]]);
-        this.numberOfDirection = 1;
+        this.fourRelPos.push([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        this.numberOfRotPos = this.fourRelPos.length;
+        this.rotPos = Math.floor((Math.random() * this.numberOfRotPos));
+    }
+    function T() {
+        Figure.apply(this, arguments);
+        this.fourRelPos.push([[0, 1], [1, 1], [2, 1], [1, 0]]);
+        this.fourRelPos.push([[1, 0], [1, 1], [1, 2], [2, 1]]);
+        this.fourRelPos.push([[0, 1], [1, 1], [2, 1], [1, 2]]);
+        this.fourRelPos.push([[0, 1], [1, 0], [1, 1], [1, 2]]);
+        this.numberOfRotPos = this.fourRelPos.length;
+        this.rotPos = Math.floor((Math.random() * this.numberOfRotPos));
+    }
+    function L() {
+        Figure.apply(this, arguments);
+        this.fourRelPos.push([[0, 1], [1, 1], [2, 1], [2, 0]]);
+        this.fourRelPos.push([[1, 0], [1, 1], [1, 2], [2, 2]]);
+        this.fourRelPos.push([[0, 1], [0, 2], [1, 1], [2, 1]]);
+        this.fourRelPos.push([[0, 0], [1, 0], [1, 1], [1, 2]]);
+        this.numberOfRotPos = this.fourRelPos.length;
+        this.rotPos = Math.floor((Math.random() * this.numberOfRotPos));
+    }
+    function J() {
+        Figure.apply(this, arguments);
+        this.fourRelPos.push([[0, 0], [0, 1], [1, 1], [2, 1]]);
+        this.fourRelPos.push([[1, 0], [1, 1], [1, 2], [2, 0]]);
+        this.fourRelPos.push([[0, 1], [1, 1], [2, 1], [2, 2]]);
+        this.fourRelPos.push([[0, 2], [1, 0], [1, 1], [1, 2]]);
+        this.numberOfRotPos = this.fourRelPos.length;
+        this.rotPos = Math.floor((Math.random() * this.numberOfRotPos));
+    }
+    function Stick() {
+        Figure.apply(this, arguments);
+        this.fourRelPos.push([[0, 1], [1, 1], [2, 1], [3, 1]]);
+        this.fourRelPos.push([[2, 0], [2, 1], [2, 2], [2, 3]]);
+        this.numberOfRotPos = this.fourRelPos.length;
+        this.rotPos = Math.floor((Math.random() * this.numberOfRotPos));
+    }
+    function S() {
+        Figure.apply(this, arguments);
+        this.fourRelPos.push([[0, 1], [1, 1], [1, 0], [2, 0]]);
+        this.fourRelPos.push([[0, 0], [0, 1], [1, 1], [1, 2]]);
+        this.numberOfRotPos = this.fourRelPos.length;
+        this.rotPos = Math.floor((Math.random() * this.numberOfRotPos));
+    }
+    function Z() {
+        Figure.apply(this, arguments);
+        this.fourRelPos.push([[0, 1], [1, 1], [1, 2], [2, 2]]);
+        this.fourRelPos.push([[1, 2], [1, 1], [2, 1], [2, 0]]);
+        this.numberOfRotPos = this.fourRelPos.length;
+        this.rotPos = Math.floor((Math.random() * this.numberOfRotPos));
     }
 
     function concat(a, b) {
         return ('0' + a.toString()).slice(-2) + ('0' + b.toString()).slice(-2);
     }
     function Game() {
+        this.lines = 0;
         this.grid = initGrid();
         this.currentFigure = getNewFigure(this.grid);
-        this.step = function(){
-            console.info("step");
-            if (!this.currentFigure.moveDown(this.grid)){
+        this.collapseRows = function () {
+            var grid = this.grid;
+            var toBeDeleted = [];
+            for (var i = 0; i < tableSizeY; i++){
+                if (grid[i].every(function (item) {
+                   return item == true;
+                })){
+                    toBeDeleted.push(i);
+                    this.lines++;
+                    this.delay = this.delay-this.speedUp;
+                }
+            }
+            toBeDeleted.forEach(function (i) {
+                grid.splice(i, 1);
+                var internalArr = [];
+                for (var j = 0; j < tableSizeX; j++) {
+                    internalArr.push(false);
+                }
+                grid.unshift(internalArr);
+
+            });
+            for (var k = 0; k < tableSizeY; k++){
+                grid[k].forEach(function (it, index) {
+                    if (it) {
+                        blackItem([index, k])
+                    }else {
+                        whiteItem([index, k])
+                    }
+                })
+            }
+
+        };
+        this.step = function () {
+            //console.info("step");
+            if (!this.currentFigure.moveDown(this.grid)) {
+                this.collapseRows();
                 this.currentFigure = getNewFigure(this.grid);
             }
         };
+        this.pause = function() {
+            if (!this.isPaused) {
+                this.clearInterval();
+                this.isPaused = true;
+            }else{
+                this.setInterval();
+                this.isPaused = false;
+            }
+        };
+        this.clearInterval = function(){
+            window.clearInterval(interval);
+        };
+        this.setInterval = function(){
+            game.step();
+            interval = window.setInterval(play,this.delay);
+        };
+        this.isPaused = false;
+        this.delay = 1000;
+        this.speedUp = 20;
         function initGrid() {
-            console.info("init array");
+            //console.info("init array");
             var extArr = [];
-            for (var i = 0; i < tableSizeY; i++){
+            for (var i = 0; i < tableSizeY; i++) {
                 var internalArr = [];
-                for (var j = 0; j < tableSizeX; j++){
+                for (var j = 0; j < tableSizeX; j++) {
                     internalArr.push(false);
                 }
                 extArr.push(internalArr);
             }
             return extArr;
         }
-        function getNewFigure(grid) {
-            return new Cube();
-        }
 
+        function getNewFigure(grid) {
+            var figure = undefined;
+            var x = Math.floor((Math.random() * 7));
+            if (x == 0) {figure = new Cube();}
+            else if (x == 1) {figure = new T();}
+            else if (x == 2) {figure = new Stick();}
+            else if (x == 3) {figure = new L();}
+            else if (x == 4) {figure = new J();}
+            else if (x == 5) {figure = new S();}
+            else if (x == 6) {figure = new Z();}
+            var absCells = figure.getAbsCells();
+            figure.draw();
+            if (figure.isPlaceFree(absCells, grid)) {
+                return figure;
+            } else {
+                console.info("game over");
+                figure.draw();
+                window.clearInterval(interval);
+            }
+        }
     }
 
 </script>
