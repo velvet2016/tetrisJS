@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="icon" href="tetris.png">
     <title>Tetris</title>
 </head>
 <body onload="onLoad()" onkeydown="whichButton(event)">
@@ -16,11 +17,12 @@
     var DOWN = {dx: 0, dy: 1};
     var RIGHT = {dx: 1, dy: 0};
     var LEFT = {dx: -1, dy: 0};
+    var interval;
 
     function onLoad() {
         tableCreate();
         game = new Game();
-        interval = setInterval(play, game.delay);
+        interval = window.setInterval(play, game.delay);
     }
     function play() {
         game.step();
@@ -53,23 +55,24 @@
 
         var inCode;
         inCode = event.keyCode;
-        //console.log(inCode);
-        if (inCode == keyUp) {
+        if (inCode == keyUp && !game.isGameOver && !game.isPaused) {
             game.currentFigure.turn(game.grid);
         }
-        if (inCode == keyRight) {
+        else if (inCode == keyRight && !game.isGameOver && !game.isPaused) {
             game.currentFigure.moveRight(game.grid);
         }
-        if (inCode == keyLeft) {
+        else if (inCode == keyLeft && !game.isGameOver && !game.isPaused) {
             game.currentFigure.moveLeft(game.grid);
         }
-        if (inCode == keyDown) {
+        else if (inCode == keyDown && !game.isGameOver && !game.isPaused) {
             while(game.currentFigure.moveDown(game.grid)){
             }
-            game.clearInterval();
-            game.setInterval();
+            if (!game.isGameOver) {
+                game.clearInt();
+                game.setInt();
+            }
         }
-        if (inCode == keySpace) {
+        else if (inCode == keySpace && !game.isGameOver) {
             game.pause();
         }
     }
@@ -121,7 +124,6 @@
             try {
                 if (!this.isPlaceFree(predictedCells, grid)) return false;
             } catch (e) {
-                //console.info("index");
                 return false;
             }
             return true;
@@ -135,8 +137,6 @@
             absCells.forEach(blackItem);
         };
         this.move = function (dir, grid) {
-            //console.info(this.x);
-            //console.info(this.y);
             if (this.isMoveAvailable(dir, grid)) {
                 this.erase();
                 this.x = this.x + dir.dx;
@@ -147,7 +147,6 @@
             return false;
         };
         this.fillGrid = function (grid) {
-            //console.info("filling grid");
             var absCells = this.getAbsCells();
             absCells.forEach(function (item) {
                 grid[item[1]][item[0]] = true;
@@ -175,17 +174,6 @@
                 this.draw();
             }
         };
-/*        function whiteItem(item, index) {
-            var cell = getCell(item);
-            cell.style.backgroundColor = "white";
-        }
-
-        function blackItem(item, index) {
-            var cell = getCell(item);
-            cell.style.backgroundColor = "#2F2F2F";
-        }*/
-
-
     }
     function getCell(item) {
         var id = concat(item[0], item[1]);
@@ -260,9 +248,31 @@
         return ('0' + a.toString()).slice(-2) + ('0' + b.toString()).slice(-2);
     }
     function Game() {
-        this.lines = 0;
+        this.isGameOver = false;
         this.grid = initGrid();
-        this.currentFigure = getNewFigure(this.grid);
+        this.getNewFigure = function() {
+            var figure = undefined;
+            var x = Math.floor((Math.random() * 7));
+            if (x == 0) {figure = new Cube();}
+            else if (x == 1) {figure = new T();}
+            else if (x == 2) {figure = new Stick();}
+            else if (x == 3) {figure = new L();}
+            else if (x == 4) {figure = new J();}
+            else if (x == 5) {figure = new S();}
+            else if (x == 6) {figure = new Z();}
+            var absCells = figure.getAbsCells();
+            figure.draw();
+            if (figure.isPlaceFree(absCells, this.grid)) {
+                return figure;
+            } else {
+                console.info("game over");
+                this.isGameOver = true;
+
+                figure.draw();
+                this.clearInt();
+            }
+        };
+        this.currentFigure = this.getNewFigure();
         this.collapseRows = function () {
             var grid = this.grid;
             var toBeDeleted = [];
@@ -272,7 +282,9 @@
                 })){
                     toBeDeleted.push(i);
                     this.lines++;
-                    this.delay = this.delay-this.speedUp;
+                    console.info(this.lines);
+                    this.delay = 130+800*(Math.pow(1.07, -(this.lines)));
+                    console.info(this.delay);
                 }
             }
             toBeDeleted.forEach(function (i) {
@@ -296,33 +308,35 @@
 
         };
         this.step = function () {
-            //console.info("step");
             if (!this.currentFigure.moveDown(this.grid)) {
                 this.collapseRows();
-                this.currentFigure = getNewFigure(this.grid);
+                this.currentFigure = this.getNewFigure();
             }
         };
         this.pause = function() {
             if (!this.isPaused) {
-                this.clearInterval();
+                this.clearInt();
                 this.isPaused = true;
             }else{
-                this.setInterval();
+                this.clearInt();
+                this.setInt();
                 this.isPaused = false;
             }
         };
-        this.clearInterval = function(){
+        this.clearInt = function(){
             window.clearInterval(interval);
         };
-        this.setInterval = function(){
-            game.step();
-            interval = window.setInterval(play,this.delay);
+        this.setInt = function(){
+            this.step();
+            if (!this.isGameOver) {
+                interval = window.setInterval(play, this.delay);
+            }
         };
         this.isPaused = false;
-        this.delay = 1000;
-        this.speedUp = 20;
+        this.delay = 900;
+        this.lines = 0;
+
         function initGrid() {
-            //console.info("init array");
             var extArr = [];
             for (var i = 0; i < tableSizeY; i++) {
                 var internalArr = [];
@@ -334,26 +348,7 @@
             return extArr;
         }
 
-        function getNewFigure(grid) {
-            var figure = undefined;
-            var x = Math.floor((Math.random() * 7));
-            if (x == 0) {figure = new Cube();}
-            else if (x == 1) {figure = new T();}
-            else if (x == 2) {figure = new Stick();}
-            else if (x == 3) {figure = new L();}
-            else if (x == 4) {figure = new J();}
-            else if (x == 5) {figure = new S();}
-            else if (x == 6) {figure = new Z();}
-            var absCells = figure.getAbsCells();
-            figure.draw();
-            if (figure.isPlaceFree(absCells, grid)) {
-                return figure;
-            } else {
-                console.info("game over");
-                figure.draw();
-                window.clearInterval(interval);
-            }
-        }
+
     }
 
 </script>
