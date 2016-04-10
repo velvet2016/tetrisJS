@@ -69,7 +69,8 @@
             }
             if (!game.isGameOver) {
                 game.clearInt();
-                game.setInt();
+                setTimeout(play, (game.delay/2));
+                game.setIntWithoutStep();
             }
         }
         else if (inCode == keySpace && !game.isGameOver) {
@@ -154,9 +155,9 @@
         };
         this.moveDown = function (grid) {
             var wasMoved = this.move(DOWN, grid);
-            if (!wasMoved){
+        /*    if (!wasMoved){
                 this.fillGrid(grid);
-            }
+            }*/
             return wasMoved;
         };
         this.moveRight = function (grid) {
@@ -308,7 +309,8 @@
 
         };
         this.step = function () {
-            if (!this.currentFigure.moveDown(this.grid)) {
+            if (!this.isGameOver && !this.currentFigure.moveDown(this.grid)) {
+                this.currentFigure.fillGrid(this.grid);
                 this.collapseRows();
                 this.currentFigure = this.getNewFigure();
             }
@@ -328,6 +330,11 @@
         };
         this.setInt = function(){
             this.step();
+            if (!this.isGameOver) {
+                interval = window.setInterval(play, this.delay);
+            }
+        };
+        this.setIntWithoutStep = function(){
             if (!this.isGameOver) {
                 interval = window.setInterval(play, this.delay);
             }
